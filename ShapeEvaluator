@@ -1,0 +1,155 @@
+package Managers;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
+
+public class ShapeEvaluator {
+
+	private Sprite sprite;
+	private int v=0;
+	private int switchIndex=0;
+	private float perimeter=0;
+	private int incorrectCount=0;
+	private boolean displayPercent = false;
+	
+	private List<Sprite> vList = new ArrayList<Sprite>();
+	private List<Integer> vIList = new ArrayList<Integer>();
+	private List<Float> perimeterList = new ArrayList<Float>();
+	
+	private List<Integer> newIndexList = new ArrayList<Integer>();
+	private List<Sprite> newVerticesList = new ArrayList<Sprite>();
+	private List<Float> distList = new ArrayList<Float>();
+	private List<Sprite> list = new ArrayList<Sprite>();
+	private List<Sprite> completeList = new ArrayList<Sprite>();
+	private List<Sprite> correctList = new ArrayList<Sprite>();
+	
+	public ShapeEvaluator(Sprite sprite) {
+		this.sprite = sprite;
+	}
+	
+	public void evaluatePoints(int v, List<Sprite> vList, List<Integer> vIList, List<Sprite> completeList) {
+		this.vList = vList;
+		this.vIList = vIList;
+		this.completeList = completeList;
+		this.v = v;
+		
+//		if(correctList.isEmpty()) {correctList.addAll(completeList);}
+		
+		switch(switchIndex) {
+		case 0: createNewList();
+		case 1: bubbleSort();
+		case 2: findPerimeter();
+		case 3: drawShape();
+		case 4: calculateAccuracy();
+		default: break;
+		}
+//		return correctList.size()/completeList.size();
+	}
+	
+	private void calculateAccuracy() {
+		System.out.println("calculate accuracy");
+		
+		for(int i=0;i<list.size();i++) {
+			for(int j=0;j<completeList.size();j++) {
+				Rectangle r1 = new Rectangle(list.get(i).getX(), list.get(i).getY(), sprite.getWidth(), sprite.getHeight());
+				Rectangle r2 = new Rectangle(completeList.get(j).getX(), completeList.get(j).getY(), sprite.getWidth(), sprite.getHeight());
+				
+				if(r1.overlaps(r2) && !correctList.contains(completeList.get(j))) {
+					correctList.add(completeList.get(j));
+				}
+			}
+		}
+		System.out.println(correctList.size() + " : " + completeList.size());
+		displayPercent=true;
+	}
+	private void drawShape() {
+		System.out.println("draw shape");
+		for(int i=0;i<v;i++) {
+			float d=360*(distList.get(i)/perimeter);
+			for(int j=0;j<(int) d;j++) {
+				Sprite newDot = new Sprite(sprite);
+				newDot.setColor(0, 0, 1, 1);
+				newDot.setPosition(((j*(distList.get(i)/d))*MathUtils.cosDeg(getAngle(i)))+newVerticesList.get(i).getX(), ((j*(distList.get(i)/d))*MathUtils.sinDeg(getAngle(i)))+newVerticesList.get(i).getY());
+				list.add(newDot);
+				if(i==v-1 && j==(360*(distList.get(i)/perimeter))-1) {
+					switchIndex=4;
+				}
+			}
+		}
+	}
+	private void findPerimeter() {
+		System.out.println("find perimeter");
+		for(int i=0;i<v;i++) {
+			if(i==v-1) {
+				perimeter+=getDist(newVerticesList.get(i).getX(), newVerticesList.get(i).getY(), newVerticesList.get(0).getX(), newVerticesList.get(0).getY());
+				distList.add(getDist(newVerticesList.get(i).getX(), newVerticesList.get(i).getY(), newVerticesList.get(0).getX(), newVerticesList.get(0).getY()));
+				switchIndex=3;
+			} else {
+				perimeter+=getDist(newVerticesList.get(i+1).getX(), newVerticesList.get(i+1).getY(), newVerticesList.get(i).getX(), newVerticesList.get(i).getY());
+				distList.add(getDist(newVerticesList.get(i+1).getX(), newVerticesList.get(i+1).getY(), newVerticesList.get(i).getX(), newVerticesList.get(i).getY()));
+			}
+		}
+	}
+	private void createNewList() {
+		System.out.println("create new list");
+		for(int i=0;i<v;i++) {
+			newIndexList.add(vIList.get(i));
+			newVerticesList.add(vList.get(i));
+			if(i==v-1) {switchIndex=1;}
+		}
+	}
+	private void bubbleSort() {
+		System.out.println("bubble sort");
+		for(int i=0;i<newIndexList.size()-1;i++) {
+			for(int j=0;j<newIndexList.size()-1-i;j++) {
+				if(newIndexList.get(j)>newIndexList.get(j+1)) {
+					exchangeIndex(j, j+1);
+					exchangeSprites(j, j+1);
+				}
+			}
+			if(i==newIndexList.size()-2) {switchIndex=2;}
+		}
+	}
+	public void drawTest(SpriteBatch spriteBatch) {
+		for(Sprite sprite : list) {
+			sprite.draw(spriteBatch);
+		}
+	}
+	public float percentCorrect() {
+		if(displayPercent) {
+			return correctList.size()/completeList.size();
+		} else {
+			return 0;
+		}
+	}
+	private void exchangeIndex(int j, int i) {
+		int temp1=newIndexList.get(j);
+		int temp2=newIndexList.get(i);
+		newIndexList.set(j, temp2);
+		newIndexList.set(i, temp1);
+	}	
+	private void exchangeSprites(int j, int i) {
+		Sprite temp1=newVerticesList.get(j);
+		Sprite temp2=newVerticesList.get(i);
+		newVerticesList.set(j, temp2);
+		newVerticesList.set(i, temp1);
+	}
+	private float getAngle(int i) {
+		if(i>=v-1) {
+			return (float) (MathUtils.radDeg*(Math.atan2(newVerticesList.get(0).getY()-newVerticesList.get(i).getY(), newVerticesList.get(0).getX()-newVerticesList.get(i).getX())));
+		} else {
+			return (float) (MathUtils.radDeg*(Math.atan2(newVerticesList.get(i+1).getY()-newVerticesList.get(i).getY(), newVerticesList.get(i+1).getX()-newVerticesList.get(i).getX())));
+		}
+	}
+	private float getDist(float x1, float y1, float x2, float y2) {
+		return (float) Math.sqrt(sqr(x1, y1, x2, y2));
+	}
+	private float sqr(float x1, float y1, float x2, float y2) {
+		return ((x2-x1)*(x2-x1))+((y2-y1)*(y2-y1));
+	}
+}
