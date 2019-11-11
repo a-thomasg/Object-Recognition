@@ -1,0 +1,138 @@
+package Managers;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.IndexArray;
+
+public class ShapeManager {
+	
+	private int index=0;
+	private int switchIndex=0;
+	private int shape=0;
+	private Sprite sprite;
+	private String str;
+	
+	private final int _TOLERANCE = 105;//within 3 dots 35px each
+	private boolean isCompleteShape = false;
+	
+	private List<Sprite> list = new ArrayList<Sprite>();
+	private List<Sprite> verticesList = new ArrayList<Sprite>();
+	private List<Integer> verticesIndex = new ArrayList<Integer>();
+	private List<Float> angleList = new ArrayList<Float>();
+	
+	ShapeEvaluator shapeEvaluator;
+	
+	public ShapeManager(Sprite sprite) {
+		this.sprite = sprite;
+		shapeEvaluator = new ShapeEvaluator(sprite);
+	}
+	
+	public void initializeDetectionStrategy(List<Sprite> list, int shape) {
+		this.list = list;
+		this.shape = shape;
+		
+		for(int i=0;i<list.size();i++) {
+			verticesIndex.add(i);
+			if(i==list.size()-1) {
+				break;
+			}
+		}
+		if(index<10) {
+			switch(switchIndex) {
+			case 0: findAngles();
+			case 1: bubbleSort();
+			case 2: getVertices();
+			case 3: displayError();
+			}
+		}
+	}
+	private void displayError() {
+		str="This is not a complete shape!";
+	}
+	private void findAngles() {
+		for(int i=0;i<list.size();i++) {
+			if(i==list.size()-1) {
+				if(getDist(list.get(i).getX(), list.get(i).getY(), list.get(0).getX(), list.get(0).getY()) <= _TOLERANCE) {
+					isCompleteShape=true;
+					switchIndex=1;
+				} else {
+					switchIndex=3;
+				}
+			} else {
+				angleList.add(angleSum(i));
+			}
+		}
+	}
+	private void bubbleSort() {
+		for(int i=0;i<angleList.size()-1;i++) {
+			for(int j=0;j<angleList.size()-1-i;j++) {
+				if(angleList.get(j)>angleList.get(j+1)) {
+					exchangeNumbers(j, j+1);
+					exchangeIndex(j, j+1);
+				}
+			}
+			if(i==angleList.size()-2) {switchIndex=2;}
+		}
+	}
+	private void getVertices() {
+		if(index<10) {
+			verticesList.add(list.get(verticesIndex.get(index)));
+//			if(index==0) {System.out.println(angleList);}
+			index++;
+		}
+		if(index==9) {
+			System.out.println(index);
+			shapeEvaluator.evaluatePoints(shape, verticesList, verticesIndex, list);
+		}
+	}
+	public void draw(SpriteBatch spriteBatch) {
+		for(int i=0;i<verticesList.size();i++) {
+			verticesList.get(i).setColor(1, 0, 0, 1);
+		}
+		for(Sprite sprite : verticesList) {
+			sprite.draw(spriteBatch);
+		}
+		shapeEvaluator.drawTest(spriteBatch);
+		
+	}
+	public float percentCorrect() {
+		return shapeEvaluator.percentCorrect();
+	}
+	private void exchangeIndex(int j, int i) {
+		int temp1=verticesIndex.get(j);
+		int temp2=verticesIndex.get(i);
+		verticesIndex.set(j, temp2);
+		verticesIndex.set(i, temp1);
+	}	
+	private void exchangeNumbers(int j, int i) {
+		float temp1=angleList.get(j);
+		float temp2=angleList.get(i);
+		angleList.set(j, temp2);
+		angleList.set(i, temp1);
+	}
+	private float angleSum(int i) {
+		int s1=i+1;
+		int s2=i-1;
+//		if(s1>list.size()-1) {s1-=list.size();}
+		if(s2<0) {s2+=list.size();}
+		if(Math.abs(Math.toDegrees(Math.atan2(list.get(i).getY()-list.get(s1).getY(), list.get(i).getX()-list.get(s1).getX())-
+				Math.atan2(list.get(i).getY()-list.get(s2).getY(), list.get(i).getX()-list.get(s2).getX()))) > 180) {
+			return (float) Math.abs((360-Math.abs((Math.toDegrees(Math.atan2(list.get(i).getY()-list.get(s1).getY(), list.get(i).getX()-list.get(s1).getX())-
+					Math.atan2(list.get(i).getY()-list.get(s2).getY(), list.get(i).getX()-list.get(s2).getX()))))));
+		} else {
+			return (float) Math.abs(Math.toDegrees(Math.atan2(list.get(i).getY()-list.get(s1).getY(), list.get(i).getX()-list.get(s1).getX())-
+					Math.atan2(list.get(i).getY()-list.get(s2).getY(), list.get(i).getX()-list.get(s2).getX())));
+		}
+	}
+	private float getDist(float x1, float y1, float x2, float y2) {
+		return (float) Math.sqrt(sqr(x1, y1, x2, y2));
+	}
+	private float sqr(float x1, float y1, float x2, float y2) {
+		return ((x2-x1)*(x2-x1))+((y2-y1)*(y2-y1));
+	}
+}
