@@ -1,0 +1,281 @@
+package Screens;
+
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+import org.me.draw.UGame;
+
+import Animations.Animations;
+import Managers.ShapeEvaluator;
+import Managers.ShapeManager;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.InputProcessor;
+import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.sun.media.jfxmedia.MediaPlayer;
+public class GameScreen implements Screen, InputProcessor {
+	final UGame game;
+	
+	public Animations animatedPlayer;
+	
+	OrthographicCamera camera;
+	OrthographicCamera hudCamera;
+	
+	public BitmapFont font;
+	
+	public AssetManager assets;
+	
+	MediaPlayer mp;
+	
+	private final int WIDTH_ = 180;
+	private final int HEIGHT_ = 320;
+	
+	Stage stage;
+
+	Actor actor;
+	
+	private float redFloat = .098f;//.004f; //25
+	private float greenFloat = .1333f;//.308f; //105
+	private float blueFloat = .1686f;//.055f; //90
+	
+	private BitmapFont rosesWhite60;
+	private float timeTextScale = .2f;
+	
+	private boolean isDrawing = false;
+	private Sprite dot;
+	private List<Sprite> dotList = new ArrayList<Sprite>();
+	private List<Sprite> comparatorList = new ArrayList<Sprite>();
+	
+	private boolean hasTouched = false;
+	
+	float fociDistance = 0;
+	
+	String str;
+	//dot list comprised of vertices
+	private List<Sprite> dList = new ArrayList<Sprite>();
+	private Sprite nullTile;
+	
+	public ShapeManager shapeManager;
+//	ShapeEvaluator shapeEvaluator;
+	
+	private Sprite node, line;
+	
+	private boolean canSelectNewShape = true;
+	private int newRandom=0;
+	private boolean correctShape = false;
+	
+	public GameScreen(final UGame gam) {
+		game = gam;
+		
+		assets = new AssetManager();
+
+		camera = new OrthographicCamera();
+		camera.setToOrtho(false, 1440, 2560);
+		
+		hudCamera = new OrthographicCamera();
+		hudCamera.setToOrtho(false, 1440, 2560);
+		
+		dot = new Sprite(new Texture(Gdx.files.internal("dot.png")));
+		nullTile = new Sprite(new Texture(Gdx.files.internal("nulltile.png")));
+		
+		font = new BitmapFont(Gdx.files.internal("lb.fnt"), Gdx.files.internal("lb.png"), false);
+		font.setScale(.75f);
+		
+		shapeManager = new ShapeManager(dot);//nullTile
+//		shapeEvaluator = new ShapeEvaluator(dot);
+		
+	}
+
+	@Override
+	public void render(float delta) {
+		
+		Gdx.gl.glClearColor(redFloat, greenFloat, blueFloat, 1);
+		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+		Gdx.input.setCatchBackKey(true);
+		
+		Vector3 playerPos = new Vector3(0, 0, 0);
+		camera.unproject(playerPos);
+		camera.position.set(1440/2, 2560/2, 0);//cameraX, cameraY, 0
+		game.batch.setProjectionMatrix(camera.combined);
+		
+		camera.update();
+		
+		game.batch.begin();
+
+		game.batch.end();
+		
+		Vector3 hudPos = new Vector3(0, 0, 0);
+		hudCamera.unproject(hudPos);
+		hudCamera.position.set(1440/2, 2560/2, 0);
+		game.hudBatch.setProjectionMatrix(hudCamera.combined);
+		hudCamera.update();
+		
+		game.hudBatch.begin();
+		
+		for(Sprite dot : dotList) {
+			dot.draw(game.hudBatch);
+		}
+		
+		if(dList.size()<9) {
+			Sprite nullT = new Sprite(nullTile);
+			dList.add(nullT);
+		}
+		for(Sprite dot : dList) {
+			dot.draw(game.hudBatch);
+		}
+		
+		shapeManager.draw(game.hudBatch);
+		
+		if(canSelectNewShape) {
+			newRandom=random(7)+3;
+			str="";
+			canSelectNewShape=false;
+		} else {
+			if(newRandom==3) {str="Draw a triangle!";}
+			if(newRandom==4) {str="Draw a rectangle!";}
+			if(newRandom==5) {str="Draw a pentagon!";}
+			if(newRandom==6) {str="Draw a hexagon!";}
+			if(newRandom==7) {str="Draw a septagon!";}
+			if(newRandom==8) {str="Draw an octagon!";}
+			if(newRandom==9) {str="Draw a circle!";}
+			
+			font.draw(game.hudBatch, str, (1440/2)-(font.getBounds(str).width)/2, 2560-(font.getBounds(str).height));
+		}
+		
+//		shapeEvaluator.drawTest(game.hudBatch);
+		
+		game.hudBatch.end();
+		/*
+		 * 
+		 * 
+		 * 
+		 */
+		handleInput();
+		handleMovement();	
+		handleHUD();
+		handleCollisions();
+		handleDPad();			
+		handleTouchInput();
+	}
+		
+	private void handleInput() {}
+	
+	private void handleHUD() {}
+	
+	private void handleTouchInput() {
+		if(Gdx.input.justTouched()) {
+			Vector3 touchPos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+			hudCamera.unproject(touchPos);
+			Rectangle touch = new Rectangle(touchPos.x, touchPos.y, 1, 1);
+		}
+	}
+	
+	private void handleDPad() {
+		if(Gdx.input.justTouched()) {
+			Vector3 touchPos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+			hudCamera.unproject(touchPos);
+			Rectangle touch = new Rectangle(touchPos.x, touchPos.y, 1, 1);
+		}
+		if(Gdx.input.isTouched()) {
+			Vector3 touchPos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+			hudCamera.unproject(touchPos);
+			Rectangle touch = new Rectangle(touchPos.x, touchPos.y, 1, 1);
+			
+			isDrawing = true;
+			
+			for(int i=0;i<100;i++) {
+				if(dotList.isEmpty()) {
+					Sprite newDot = new Sprite(dot);
+					newDot.setPosition(touch.x, touch.y);
+					dotList.add(newDot);
+					comparatorList.add(newDot);
+				} else {
+					if(getDist(touch.x, touch.y, dotList.get(dotList.size()-1).getX(), dotList.get(dotList.size()-1).getY()) >= dot.getWidth()) {
+						Sprite newDot = new Sprite(dot);
+						newDot.setPosition(touch.x, touch.y);
+						dotList.add(newDot);
+						comparatorList.add(newDot);
+					}
+				}
+			}
+			
+			hasTouched = true;
+			
+		} else {
+			isDrawing = false;
+			
+			if(hasTouched) {
+				shapeManager.initializeDetectionStrategy(dotList, newRandom);
+				if(shapeManager.percentCorrect()>.9) {
+					correctShape=true;
+					System.out.println("correct shape: " + correctShape);
+				}
+			}
+		}
+	}
+	
+	private float getDist(float x1, float y1, float x2, float y2) {
+		return (float) Math.sqrt(sqr(x1, y1, x2, y2));
+	}
+	private float sqr(float x1, float y1, float x2, float y2) {
+		return ((x2-x1)*(x2-x1))+((y2-y1)*(y2-y1));
+	}
+	private void handleCollisions() {
+	}
+	private void handleMovement() {}
+	private static int random(int i) {
+		Random random = new Random();
+		int randomR = random.nextInt(i);
+		return (randomR);
+	}
+	@Override
+	public boolean keyDown(int keycode) {
+		if(keycode == Keys.BACK) {
+		}
+		return false;
+	}
+	@Override
+	public boolean keyUp(int keycode) {return false;}
+	@Override
+	public boolean keyTyped(char character) {return false;}
+	@Override
+	public boolean touchDown(int screenX, int screenY, int pointer, int button) {return false;}
+	@Override
+	public boolean touchUp(int screenX, int screenY, int pointer, int button) {return false;}
+	@Override
+	public boolean touchDragged(int screenX, int screenY, int pointer) {return false;}
+	@Override
+	public boolean mouseMoved(int screenX, int screenY) {return false;}
+	@Override
+	public boolean scrolled(int amount) {return false;}
+	@Override
+	public void resize(int width, int height) {}
+	@Override
+	public void show() {}
+	@Override
+	public void hide() {}
+	@Override
+	public void pause() {}
+	@Override
+	public void resume() {}
+	@Override
+	public void dispose() {
+//		game.batch.dispose();
+//		assets.dispose();
+//		font.dispose();
+//		game.dispose();
+	}
+}
